@@ -1,18 +1,23 @@
-const { hexStripZeros } = require("ethers/lib/utils");
 
-const {ethers} = require("hardhat");
+const  hre = require("hardhat");
 
 const main = async () => {
-    const waveContractFactory = await ethers.getContractFactory("WavePortal");
-    const waveContract = await waveContractFactory.deploy();
+  const [deployer] = await hre.ethers.getSigners();
+  const accountBalance = await deployer.getBalance();
 
-    await waveContract.deployed();
+  console.log("Deploying contracts with account: ", deployer.address);
+  console.log("Account balance: ", accountBalance.toString());
 
-    console.log('wave portal deployed to', waveContract.address);
+  const waveContractFactory = await hre.ethers.getContractFactory("WavePortal");
+  const waveContract = await waveContractFactory.deploy();
+
+  await waveContract.deployed();
+
+  console.log('wave portal deployed to', waveContract.address);
 };
 
 const runMain = () => {
-    main()
+  main()
     .then(() => process.exit(0))
     .catch((error) => {
       console.error(error);
