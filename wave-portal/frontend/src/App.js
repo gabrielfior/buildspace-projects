@@ -58,18 +58,40 @@ export default function App() {
     }
   };
 
-  const wave = async () => {
+  const getWaveContract = () => {
+    const { ethereum } = window;
+    const provider = new ethers.providers.Web3Provider(ethereum);
+    const signer = provider.getSigner();
+    const wavePortalContract = new ethers.Contract(contractAddress, contractABI, signer);
+    return wavePortalContract;
+  };
+
+  const getTotalWaves = async () => {
     try {
       const { ethereum } = window;
       if (ethereum) {
         setPercentage(0);
-        const provider = new ethers.providers.Web3Provider(ethereum);
-        const signer = provider.getSigner();
-        const wavePortalContract = new ethers.Contract(contractAddress, contractABI, signer);
+        const wavePortalContract = getWaveContract();
 
         let count = await wavePortalContract.getTotalWaves();
         setTotalWaves(count.toNumber());
         console.log('retrieved total wave count ', count.toNumber());
+
+      }
+      else {
+        console.log('no ethereum object')
+      }
+    } catch (error) {
+      console.log(error);
+    };
+  };
+
+  const wave = async () => {
+    try {
+      const { ethereum } = window;
+      if (ethereum) {
+
+        const wavePortalContract = getWaveContract();
 
         // execute wave
         const waveTxn = await wavePortalContract.wave();
@@ -79,10 +101,7 @@ export default function App() {
         await waveTxn.wait();
         console.log("Mining ", waveTxn.hash);
 
-        count = await wavePortalContract.getTotalWaves();
-        setPercentage(100);
-        setTotalWaves(count.toNumber());
-        console.log('retrieved total wave count ', count.toNumber());
+        await getTotalWaves();
 
       }
       else {
@@ -105,6 +124,10 @@ export default function App() {
     checkIfWalletIsConnected();
   }, [])
 
+  useEffect(() => {
+    getTotalWaves();
+  },
+    [totalWaves])
 
   return (
     <div className="mainContainer">
@@ -118,6 +141,8 @@ export default function App() {
           <h2> Waving Progress </h2>
           <ProgressBar percentage={percentage} />
         </div>
+
+        <h2>{totalWaves} waves collected so far!</h2>
 
         <button className="waveButton" onClick={wave}>
           Wave at Me
