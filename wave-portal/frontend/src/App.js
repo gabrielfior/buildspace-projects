@@ -1,10 +1,16 @@
 import React, { useEffect, useState } from "react";
 import { ethers } from "ethers";
 import './App.css';
+import abi from "./utils/WavePortal.json";
+import ProgressBar from "./progressbar/ProgressBar";
 
 export default function App() {
 
   const [currentAccount, setCurrentAccount] = useState("");
+  const [totalWaves, setTotalWaves] = useState("");
+  const [percentage, setPercentage] = useState(0);
+  const contractAddress = "0x83BE50BA9726AC059835Db3D6b16C5AfCFeFf0CF";
+  const contractABI = abi.abi;
 
   const checkIfWalletIsConnected = async () => {
 
@@ -52,10 +58,52 @@ export default function App() {
     }
   };
 
+  const wave = async () => {
+    try {
+      const { ethereum } = window;
+      if (ethereum) {
+        setPercentage(0);
+        const provider = new ethers.providers.Web3Provider(ethereum);
+        const signer = provider.getSigner();
+        const wavePortalContract = new ethers.Contract(contractAddress, contractABI, signer);
+
+        let count = await wavePortalContract.getTotalWaves();
+        setTotalWaves(count.toNumber());
+        console.log('retrieved total wave count ', count.toNumber());
+
+        // execute wave
+        const waveTxn = await wavePortalContract.wave();
+        console.log("Mining ", waveTxn.hash);
+        setPercentage(50);
+
+        await waveTxn.wait();
+        console.log("Mining ", waveTxn.hash);
+
+        count = await wavePortalContract.getTotalWaves();
+        setPercentage(100);
+        setTotalWaves(count.toNumber());
+        console.log('retrieved total wave count ', count.toNumber());
+
+      }
+      else {
+        console.log('no ethereum object')
+      }
+    } catch (error) {
+      console.log(error);
+    };
+  };
+
+  const nextStep = () => {
+    if (percentage === 100) {
+      return;
+    }
+    setPercentage(percentage + 20);
+  }
+
+
   useEffect(() => {
     checkIfWalletIsConnected();
   }, [])
-
 
 
   return (
@@ -66,11 +114,12 @@ export default function App() {
           👋 Hey there!
         </div>
 
-        <div className="bio">
-          I am farza and I worked on self-driving cars so that's pretty cool right? Connect your Ethereum wallet and wave at me!
+        <div>
+          <h2> Waving Progress </h2>
+          <ProgressBar percentage={percentage} />
         </div>
 
-        <button className="waveButton" onClick={null}>
+        <button className="waveButton" onClick={wave}>
           Wave at Me
         </button>
 
