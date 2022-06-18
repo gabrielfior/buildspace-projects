@@ -20,7 +20,7 @@ const main = async () => {
   let waveCount = await waveContract.getTotalWaves();
   console.log('wave count', waveCount);
 
-  waveTxn = await waveContract.connect(randomPerson).wave();
+  let waveTxn = await waveContract.connect(randomPerson).wave("A message");
   //let waveTxn = await waveContract.wave();
   await waveTxn.wait();
   console.log('tx', waveTxn);
@@ -33,6 +33,18 @@ const main = async () => {
   const result = await waveContract.getUserWaves();
   //const {0: variable_1, 1: variable_2} = result;
   console.log('wave mapping', result);
+
+  /**
+   * Let's send a few waves!
+   */
+   waveTxn = await waveContract.wave("A message!");
+   await waveTxn.wait(); // Wait for the transaction to be mined
+ 
+   waveTxn = await waveContract.connect(randomPerson).wave("Another message!");
+   await waveTxn.wait(); // Wait for the transaction to be mined
+ 
+   let allWaves = await waveContract.getAllWaves();
+   console.log(allWaves);
 };
 
 const runMain = () => {

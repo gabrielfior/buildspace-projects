@@ -24,6 +24,10 @@
   margin-top: 16px;
 }
 
+.display-linebreak {
+  white-space: pre-line;
+}
+
 .waveButton {
   cursor: pointer;
   margin-top: 16px;
