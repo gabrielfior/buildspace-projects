@@ -4,17 +4,26 @@ const hre = require("hardhat");
 const main = async () => {
   const [owner, randomPerson] = await hre.ethers.getSigners();
   const waveContractFactory = await hre.ethers.getContractFactory("WavePortal");
-  const waveContract = await waveContractFactory.deploy();
+  const waveContract = await waveContractFactory.deploy({
+    value: hre.ethers.utils.parseEther("0.1"),
+  });
 
   await waveContract.deployed(); // deployed by default by owner
 
+  // tenderly not used locally
+  /*
   await hre.tenderly.persistArtifacts({
     name: "WavePortal",
     address: waveContract.address,
   });
+  */
 
   console.log('wave portal deployed to', waveContract.address);
   console.log("Contract deployed by:", owner.address);
+
+  // contract balance
+  let contractBalance = await hre.ethers.provider.getBalance(waveContract.address);
+  console.log("contract balance (ETH): ", hre.ethers.utils.formatEther(contractBalance));
 
   // call wave
   let waveCount = await waveContract.getTotalWaves();
@@ -24,6 +33,13 @@ const main = async () => {
   //let waveTxn = await waveContract.wave();
   await waveTxn.wait();
   console.log('tx', waveTxn);
+
+  // contract balance should have been updated
+  contractBalance = await hre.ethers.provider.getBalance(waveContract.address);
+  console.log(
+    "new contract balance:",
+    hre.ethers.utils.formatEther(contractBalance)
+  );
 
   waveCount = await waveContract.getTotalWaves();
   console.log('new wave count', waveCount);
