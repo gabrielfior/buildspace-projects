@@ -18,18 +18,15 @@ import toast, { Toaster } from 'react-hot-toast';
 import WavePortalArtifact from "./contracts/WavePortal.json";
 import contractAddress from "./contracts/contract-address.json";
 
-const Item = styled(Card)(({ theme }) => ({
-  backgroundColor: theme.palette.mode === 'dark' ? '#1A2027' : '#fff',
+const Item = styled(Card)(({ theme }) => ({  
   ...theme.typography.body2,
   padding: theme.spacing(1),
   textAlign: 'center',
-  color: theme.palette.text.secondary,
 }));
 
 export default function App() {
 
   const [currentAccount, setCurrentAccount] = useState("");
-  const [totalWaves, setTotalWaves] = useState("");
   const [percentage, setPercentage] = useState(0);
   const [allWaves, setAllWaves] = useState([]);
   const [message, setMessage] = useState("");
@@ -42,14 +39,15 @@ export default function App() {
       if (ethereum) {
         let wavePortalContract = getWaveContract();
         const waves = await wavePortalContract.getAllWaves();
-
+        console.log('waves', waves);
 
         let wavesCleaned = [];
         waves.forEach(wave => {
           wavesCleaned.push({
             address: wave.waver,
             timestamp: new Date(wave.timestamp * 1000),
-            message: wave.message
+            message: wave.message,
+            waverWonPrize: wave.waverWonPrize,
           });
         });
 
@@ -124,26 +122,6 @@ export default function App() {
     return wavePortalContract;
   };
 
-  const getTotalWaves = async () => {
-    try {
-      const { ethereum } = window;
-      if (ethereum) {
-        setPercentage(0);
-        const wavePortalContract = getWaveContract();
-
-        let count = await wavePortalContract.getTotalWaves();
-        setTotalWaves(count.toNumber());
-        console.log('retrieved total wave count ', count.toNumber());
-
-      }
-      else {
-        console.log('no ethereum object')
-      }
-    } catch (error) {
-      console.log(error);
-    };
-  };
-
   const wave = async () => {
     try {
       const { ethereum } = window;
@@ -159,7 +137,6 @@ export default function App() {
         await waveTxn.wait();
         console.log("Mining ", waveTxn.hash);
 
-        await getTotalWaves();
         setMessage("");
 
       }
@@ -174,38 +151,43 @@ export default function App() {
 
   // listen for emitter events
   useEffect(() => {
-
+    console.log('entered effect of new wave');
     let wavePortalContract;
 
-    const onNewWave = (from, timestamp, message) => {
+    const onNewWave = (from, timestamp, message, waverWonPrize) => {
       console.log('entered new wave');
-      console.log("NewWave", from, timestamp, message);
+      console.log("NewWave", from, timestamp, message, waverWonPrize);
       setAllWaves(prevState => [
         ...prevState,
         {
           address: from,
           timestamp: new Date(timestamp * 1000),
-          message: message
+          message: message,
+          waverWonPrize: waverWonPrize,
         },
       ]);
     };
 
-    if (window.ethereum){
+    if (window.ethereum) {
       wavePortalContract = getWaveContract();
       wavePortalContract.on("NewWave", onNewWave);
     }
 
     return () => {
-      if (wavePortalContract){
+      if (wavePortalContract) {
         wavePortalContract.off("NewWave", onNewWave);
       }
     };
-
   }, []);
 
   useEffect(() => {
     checkIfWalletIsConnected();
   }, [])
+
+  const formatDate = (dateString) => {
+    const options = { year: "numeric", month: "long", day: "numeric", hour: "numeric", minute: "numeric", second: "numeric", timeZoneName: "short" };
+    return new Date(dateString).toLocaleDateString(undefined, options);
+  }
 
   const getCardsList = () => {
     let cardList = [];
@@ -214,9 +196,9 @@ export default function App() {
       cardList.push(
         <Grid item key={index}>
           <Item>
-            <Card>
+            <Card style={{ color: wave.waverWonPrize ? "green" : "red" }}>
               <CardHeader
-                title={"Wave " + (index + 1)}
+                title={"# " + (index + 1)}
               />
               <CardContent>
                 <Typography
@@ -233,7 +215,7 @@ export default function App() {
                 <Typography
                   variant={"string"}
                 >
-                  {wave.timestamp.toString()}
+                  {formatDate(wave.timestamp)}
                 </Typography>
               </CardContent>
             </Card>
@@ -252,7 +234,7 @@ export default function App() {
 
       <div className="dataContainer">
         <div className="header">
-          👋 Hey there!
+          👋 Waving Lottery
         </div>
 
         <div>
@@ -260,7 +242,7 @@ export default function App() {
           <ProgressBar percentage={percentage} />
         </div>
 
-        <h2>{totalWaves} waves collected so far!</h2>
+        <h2>{allWaves.length} waves collected so far!</h2>
 
         <TextField id="outlined-basic" label="Message to wave" variant="outlined" value={message} onChange={(e) => setMessage(e.target.value)} />
         <Button style={{ marginTop: "10px" }} variant="contained" onClick={wave}>Wave at me</Button>
@@ -273,20 +255,26 @@ export default function App() {
           <button className="waveButton" onClick={connectWallet}>Connect Wallet</button>
         )}
 
-
-
         <div>
           <Box sx={{ flexGrow: 1 }}>
+            <h3>
+              <div style={{ color: 'green' }}>
+                Won lottery
+              </div>
+              <div style={{ color: 'red' }}>
+              Did not win lottery
+              </div>
+            </h3>
             <Grid container spacing={2}>
               {getCardsList()}
             </Grid>
           </Box>
         </div>
 
-      </div>
+      </div >
 
       <Toaster />
-    </div>
+    </div >
 
   );
 }

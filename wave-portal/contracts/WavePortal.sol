@@ -8,7 +8,8 @@ contract WavePortal {
     struct Wave {
         address waver; // The address of the user who waved.
         string message; // The message the user sent.
-        uint256 timestamp; // The timestamp when the user waved.
+        uint256 timestamp; // The timestamp when the user waved.,
+        bool waverWonPrize; // waver won prize
     }
 
     mapping(address => uint256) public balances;
@@ -19,7 +20,7 @@ contract WavePortal {
     uint256 cooldown_in_sec;
     mapping(address => uint256) public lastWavedAt;
 
-    event NewWave(address indexed from, uint256 timestamp, string message);
+    event NewWave(address indexed from, uint256 timestamp, string message, bool waverWonPrize);
 
     constructor(uint256 cooldown_sec) payable {
         console.log("Contract has been constructed");
@@ -46,7 +47,8 @@ contract WavePortal {
         addresses.push(msg.sender);
         console.log("%s waved w/ message %s", msg.sender, _message);
         console.log("balance for sender is %d", balances[msg.sender]);
-        waves.push(Wave(msg.sender, _message, block.timestamp));
+        
+        bool waverWonPrize = false;
 
         // new seed
         updateSeed();
@@ -54,6 +56,7 @@ contract WavePortal {
 
         if (seed < 50) {
             console.log("%s won", msg.sender);
+            waverWonPrize = true;
             // definining prize money
             uint256 prizeAmount = 0.0001 ether;
             require(
@@ -66,7 +69,8 @@ contract WavePortal {
             require(success, "Failed to withdraw money from contract");
         }
 
-        emit NewWave(msg.sender, block.timestamp, _message);
+        waves.push(Wave(msg.sender, _message, block.timestamp, waverWonPrize));
+        emit NewWave(msg.sender, block.timestamp, _message, waverWonPrize);
     }
 
     function getAllWaves() public view returns (Wave[] memory) {
