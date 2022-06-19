@@ -1,10 +1,16 @@
 
 const hre = require("hardhat");
 
+const printBalance = async (contract) => {
+  // contract balance
+  let contractBalance = await hre.ethers.provider.getBalance(contract.address);
+  console.log("contract balance (ETH): ", hre.ethers.utils.formatEther(contractBalance));
+};
+
 const main = async () => {
   const [owner, randomPerson] = await hre.ethers.getSigners();
   const waveContractFactory = await hre.ethers.getContractFactory("WavePortal");
-  const waveContract = await waveContractFactory.deploy({
+  const waveContract = await waveContractFactory.deploy(30,{
     value: hre.ethers.utils.parseEther("0.1"),
   });
 
@@ -22,8 +28,7 @@ const main = async () => {
   console.log("Contract deployed by:", owner.address);
 
   // contract balance
-  let contractBalance = await hre.ethers.provider.getBalance(waveContract.address);
-  console.log("contract balance (ETH): ", hre.ethers.utils.formatEther(contractBalance));
+  await printBalance(waveContract);
 
   // call wave
   let waveCount = await waveContract.getTotalWaves();
@@ -35,11 +40,7 @@ const main = async () => {
   console.log('tx', waveTxn);
 
   // contract balance should have been updated
-  contractBalance = await hre.ethers.provider.getBalance(waveContract.address);
-  console.log(
-    "new contract balance:",
-    hre.ethers.utils.formatEther(contractBalance)
-  );
+  await printBalance(waveContract);
 
   waveCount = await waveContract.getTotalWaves();
   console.log('new wave count', waveCount);
@@ -50,17 +51,28 @@ const main = async () => {
   //const {0: variable_1, 1: variable_2} = result;
   console.log('wave mapping', result);
 
-  /**
-   * Let's send a few waves!
+  /*
+   * Let's try two waves now
    */
-   waveTxn = await waveContract.wave("A message!");
-   await waveTxn.wait(); // Wait for the transaction to be mined
- 
-   waveTxn = await waveContract.connect(randomPerson).wave("Another message!");
-   await waveTxn.wait(); // Wait for the transaction to be mined
- 
-   let allWaves = await waveContract.getAllWaves();
-   console.log(allWaves);
+  const waveTxn1 = await waveContract.wave("This is wave #1");
+  await waveTxn1.wait();
+  console.log('after wave 1');
+  await printBalance(waveContract);
+
+  // cannot wave twice due to cooldown
+  try {
+    const waveTxn2 = await waveContract.wave("This is wave #2");
+    await waveTxn2.wait();
+  
+    console.log('after wave 2');
+    await printBalance(waveContract);
+    
+  } catch (error) {
+    console.log("Error expected due to cooldown, continuing...");
+  }
+  
+  let allWaves = await waveContract.getAllWaves();
+  console.log(allWaves);
 };
 
 const runMain = () => {

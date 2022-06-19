@@ -1,19 +1,22 @@
 import React, { useEffect, useState } from "react";
 import { ethers } from "ethers";
 import './App.css';
-import abi from "./utils/WavePortal.json";
 import ProgressBar from "./progressbar/ProgressBar";
 import Button from '@mui/material/Button';
 import TextField from '@mui/material/TextField';
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
 import CardHeader from '@mui/material/CardHeader';
-import CardActions from '@mui/material/CardActions';
 import CardContent from '@mui/material/CardContent';
 import Typography from '@mui/material/Typography';
 import Grid from '@mui/material/Grid';
 import { styled } from '@mui/material/styles';
-import Divider from '@mui/material/Divider';
+import toast, { Toaster } from 'react-hot-toast';
+
+// We import the contract's artifacts and address here, as we are going to be
+// using them with ethers
+import WavePortalArtifact from "./contracts/WavePortal.json";
+import contractAddress from "./contracts/contract-address.json";
 
 const Item = styled(Card)(({ theme }) => ({
   backgroundColor: theme.palette.mode === 'dark' ? '#1A2027' : '#fff',
@@ -30,20 +33,16 @@ export default function App() {
   const [percentage, setPercentage] = useState(0);
   const [allWaves, setAllWaves] = useState([]);
   const [message, setMessage] = useState("");
-  const contractAddress = "0xbdfe59F3d7e108C5a7bA8c659dd1D7334bF5A24C";
-  const contractABI = abi.abi;
 
   const getAllWaves = async () => {
-    console.log('entered get all waves');
 
     try {
       const { ethereum } = window;
 
       if (ethereum) {
         let wavePortalContract = getWaveContract();
-        console.log('oi');
         const waves = await wavePortalContract.getAllWaves();
-        console.log('waves', waves);
+
 
         let wavesCleaned = [];
         waves.forEach(wave => {
@@ -54,7 +53,7 @@ export default function App() {
           });
         });
 
-        console.log('wavesCleaned', wavesCleaned);
+
         setAllWaves(wavesCleaned);
 
       }
@@ -67,7 +66,7 @@ export default function App() {
   };
 
   const checkIfWalletIsConnected = async () => {
-    console.log('entered check wallet');
+
 
     try {
       // make sure we have access to window.ethereum
@@ -76,16 +75,13 @@ export default function App() {
       if (!ethereum) {
         console.log('no metamask peeps');
       }
-      else {
-        console.log('We have ethereum object', ethereum);
-      }
 
       // check if we are authorized to access user's wallet
       const accounts = await ethereum.request({ method: "eth_accounts" });
 
       if (accounts.length !== 0) {
         const account = accounts[0];
-        console.log('found auth account', account);
+
         setCurrentAccount(account);
         await getAllWaves();
       }
@@ -118,7 +114,13 @@ export default function App() {
     const { ethereum } = window;
     const provider = new ethers.providers.Web3Provider(ethereum);
     const signer = provider.getSigner();
-    const wavePortalContract = new ethers.Contract(contractAddress, contractABI, signer);
+
+    const wavePortalContract = new ethers.Contract(
+      contractAddress.WavePortal,
+      WavePortalArtifact.abi,
+      signer
+    );
+
     return wavePortalContract;
   };
 
@@ -150,7 +152,7 @@ export default function App() {
         const wavePortalContract = getWaveContract();
 
         // execute wave
-        const waveTxn = await wavePortalContract.wave(message);
+        const waveTxn = await wavePortalContract.wave(message, { gasLimit: 300000 });
         console.log("Mining ", waveTxn.hash);
         setPercentage(50);
 
@@ -165,32 +167,56 @@ export default function App() {
         console.log('no ethereum object')
       }
     } catch (error) {
+      toast.error("Error occured, check console");
       console.log(error);
     };
   };
 
+  // listen for emitter events
+  useEffect(() => {
+
+    let wavePortalContract;
+
+    const onNewWave = (from, timestamp, message) => {
+      console.log('entered new wave');
+      console.log("NewWave", from, timestamp, message);
+      setAllWaves(prevState => [
+        ...prevState,
+        {
+          address: from,
+          timestamp: new Date(timestamp * 1000),
+          message: message
+        },
+      ]);
+    };
+
+    if (window.ethereum){
+      wavePortalContract = getWaveContract();
+      wavePortalContract.on("NewWave", onNewWave);
+    }
+
+    return () => {
+      if (wavePortalContract){
+        wavePortalContract.off("NewWave", onNewWave);
+      }
+    };
+
+  }, []);
 
   useEffect(() => {
     checkIfWalletIsConnected();
-  }, [totalWaves, allWaves])
-
-  useEffect(() => {
-    getTotalWaves();
-  },
-    [totalWaves])
+  }, [])
 
   const getCardsList = () => {
     let cardList = [];
     allWaves.map((wave, index) => {
 
       cardList.push(
-        <Grid item>
+        <Grid item key={index}>
           <Item>
             <Card>
               <CardHeader
                 title={"Wave " + (index + 1)}
-                actAsExpander={true}
-                showExpandableButton={true}
               />
               <CardContent>
                 <Typography
@@ -259,6 +285,7 @@ export default function App() {
 
       </div>
 
+      <Toaster />
     </div>
 
   );

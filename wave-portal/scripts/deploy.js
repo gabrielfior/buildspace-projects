@@ -9,7 +9,7 @@ const main = async () => {
   console.log("Account balance: ", accountBalance.toString());
 
   const waveContractFactory = await hre.ethers.getContractFactory("WavePortal");
-  const waveContract = await waveContractFactory.deploy({
+  const waveContract = await waveContractFactory.deploy(30, {
     value: hre.ethers.utils.parseEther("0.001"),
   });
 
@@ -19,7 +19,31 @@ const main = async () => {
   console.log("WavePortal balance: ", hre.ethers.utils.formatEther(contractBalance));
   console.log('wave portal deployed to', waveContract.address);
   
+  // We also save the contract's artifacts and address in the frontend directory
+  saveFrontendFiles(waveContract);
+
 };
+
+function saveFrontendFiles(contract) {
+  const fs = require("fs");
+  const contractsDir = __dirname + "/../frontend/src/contracts";
+
+  if (!fs.existsSync(contractsDir)) {
+    fs.mkdirSync(contractsDir);
+  }
+
+  fs.writeFileSync(
+    contractsDir + "/contract-address.json",
+    JSON.stringify({ WavePortal: contract.address }, undefined, 2)
+  );
+
+  const WavePortalArtifact = artifacts.readArtifactSync("WavePortal");
+
+  fs.writeFileSync(
+    contractsDir + "/WavePortal.json",
+    JSON.stringify(WavePortalArtifact, null, 2)
+  );
+}
 
 const runMain = () => {
   main()
